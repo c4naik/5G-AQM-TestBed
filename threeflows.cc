@@ -454,7 +454,7 @@ double totalTxPower = 4; //dBm
     
 
     ApplicationContainer senderApps;
-    EpsBearer voiceBearer(EpsBearer::NGBR_VIDEO_TCP_DEFAULT);
+    //EpsBearer voiceBearer(EpsBearer::NGBR_VIDEO_TCP_DEFAULT);
     // The filter for the voice tcp traffic
     Ptr<EpcTft> voiceTft = Create<EpcTft>();
     EpcTft::PacketFilter dlpfVoice;
