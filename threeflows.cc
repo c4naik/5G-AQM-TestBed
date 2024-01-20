@@ -434,7 +434,7 @@ double totalTxPower = 4; //dBm
     /*Address ueSinkLocalAddress(InetSocketAddress(ueTrafficIpIfaceContainer.GetAddress(0), porttcp));
     PacketSinkHelper packetSinkHelper("ns3::TcpSocketFactory", ueSinkLocalAddress);
     ApplicationContainer sinkApp = packetSinkHelper.Install(ueTrafficNodeContainer.Get(0));
-    sinkApp.Start(tcpAppStartTime);
+    sinkApp.Start(tcpAppStartTime);//
     sinkApp.Stop(simTime);
 
     Address ueSinkLocalAddress2(InetSocketAddress(ueTrafficIpIfaceContainer.GetAddress(1), porttcp2));
