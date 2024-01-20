@@ -314,7 +314,7 @@ double totalTxPower = 4; //dBm
     internalNet.Add(internetDevices3);
 
     QueueDiscContainer queueDiscs;
-    TrafficControlHelper tch;
+    TrafficControlHelper tch;//AQM implementation
     tch.SetRootQueueDisc (aqmAlgo);
     queueDiscs = tch.Install(internalNet); 
     AnimationInterface anim("working.xml");
