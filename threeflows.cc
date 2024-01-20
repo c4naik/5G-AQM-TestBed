@@ -35,8 +35,8 @@ double bandwidthBand1 = 6000e6;  //6000MHz  Mbps = MHz * 8 ->  48Gbps
 Time delayRemoteHostLink = MilliSeconds(1);
 Time coreLatency = MilliSeconds(0.1);
 
-Time simTime = Seconds(0.6);
-Time tcpAppStartTime = Seconds(0.5);
+Time simTime = Seconds(3.1);
+Time tcpAppStartTime = Seconds(1.0);
 
 std::string simTag = "SimResults.txt";
 std::string outputDir = "./";
@@ -301,7 +301,7 @@ double totalTxPower = 4; //dBm
     p2ph3.SetChannelAttribute("Delay", TimeValue(delayRemoteHostLink));
     NetDeviceContainer internetDevices3 = p2ph3.Install(pgw, remoteHost3);
     
-    p2ph1.EnablePcapAll("R1");
+    p2ph1.EnablePcapAll("R");
     //p2ph2.EnablePcapAll("R2");
     //p2ph3.EnablePcapAll("R3");
    // epcHelper.EnablePcapAll("epc");
@@ -366,56 +366,65 @@ double totalTxPower = 4; //dBm
     //Add traffic
 
     uint16_t port = 9;
-    //uint16_t port2 = 5001;
-    //uint16_t port3 = 5002;
-    
-    
-    
-      	//BulkSendHelper source1 ("ns3::TcpSocketFactory", InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(0), port));
-      	BulkSendHelper source2 ("ns3::TcpSocketFactory", InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(1), port));
-      	BulkSendHelper source3 ("ns3::TcpSocketFactory", InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(2), port));
-                  
-                  
-                  
-        OnOffHelper onOffHelper("ns3::TcpSocketFactory", InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(0), port));
 
-    onOffHelper.SetAttribute("OnTime", StringValue("ns3::ConstantRandomVariable[Constant=1000]"));
-    onOffHelper.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0]"));
-    onOffHelper.SetAttribute ("DataRate",StringValue ("100Mbps"));
-    onOffHelper.SetAttribute ("PacketSize",UintegerValue(20));       
-        
-  	// Set the amount of data to send in bytes.  Zero is unlimited.
-  	//source1.SetAttribute ("MaxBytes", UintegerValue (maxBytes));
-  	source2.SetAttribute ("MaxBytes", UintegerValue (maxBytes));
-  	source3.SetAttribute ("MaxBytes", UintegerValue (maxBytes));
-  	
-  	ApplicationContainer sourceApps;
-  	sourceApps.Add(onOffHelper.Install(remoteHost1));
-  	//sourceApps.Add(source1.Install (remoteHost3));
-  	//sourceApps.Add(source1.Install (remoteHost2));
-  	
-  	//sourceApps.Add(source2.Install (remoteHost1));
-  	//sourceApps.Add(source2.Install (remoteHost3));
-  	sourceApps.Add(source2.Install (remoteHost2));
-  	
-  	//sourceApps.Add(source3.Install (remoteHost1));
-  	sourceApps.Add(source3.Install (remoteHost3));
-  	//sourceApps.Add(source3.Install (remoteHost2));
-  	
-  	sourceApps.Start (tcpAppStartTime);
+    ApplicationContainer sourceApps;
+    sourceApps.Start (tcpAppStartTime);
   	sourceApps.Stop (simTime);
 
-
-	PacketSinkHelper sink1 ("ns3::TcpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), port));
-	PacketSinkHelper sink2 ("ns3::TcpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), port));
-	PacketSinkHelper sink3 ("ns3::TcpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), port));
-	
-	ApplicationContainer sinkApps;
-	sinkApps.Add(sink1.Install (ueTrafficNodeContainer.Get(0)));
-	sinkApps.Add(sink2.Install (ueTrafficNodeContainer.Get(1)));
-	sinkApps.Add(sink3.Install (ueTrafficNodeContainer.Get(2)));
-	sinkApps.Start (tcpAppStartTime);
+    ApplicationContainer sinkApps;
+    sinkApps.Start (tcpAppStartTime);
 	sinkApps.Stop (simTime);
+    
+    OnOffHelper onOffHelper1("ns3::UdpSocketFactory", InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(0), port));
+    onOffHelper1.SetAttribute("OnTime", StringValue("ns3::ConstantRandomVariable[Constant=1000]"));
+    onOffHelper1.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0]"));
+    onOffHelper1.SetAttribute ("DataRate",StringValue ("100Mbps"));
+    onOffHelper1.SetAttribute ("PacketSize",UintegerValue(20)); 
+    sourceApps.Add(onOffHelper1.Install(remoteHost1)); 
+    PacketSinkHelper sink1 ("ns3::UdpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), port));
+    sinkApps.Add(sink1.Install (ueTrafficNodeContainer.Get(0)));
+    
+    uint32_t MaxPacketSize = 1024;
+    Time interPacketInterval = Seconds (0.05);
+    uint32_t maxPacketCount = 320;
+    UdpClientHelper udpclient2;
+    udpclient2.SetAttribute("RemotePort", UintegerValue(port));
+    udpclient2.SetAttribute("MaxPackets", UintegerValue(maxPacketCount));
+    udpclient2.SetAttribute("RemoteAddress", AddressValue(ueTrafficIpIfaceContainer.GetAddress(1)));
+    udpclient2.SetAttribute ("Interval", TimeValue (interPacketInterval));
+    udpclient2.SetAttribute ("PacketSize", UintegerValue (MaxPacketSize));
+    sourceApps.Add(udpclient2.Install (remoteHost2));
+    UdpServerHelper sink2(port);
+    sinkApps.Add(sink2.Install (ueTrafficNodeContainer.Get(1)));
+
+
+    BulkSendHelper source3 ("ns3::TcpSocketFactory", InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(2), port));
+  	// Set the amount of data to send in bytes.  Zero is unlimited.
+  	source3.SetAttribute ("MaxBytes", UintegerValue (maxBytes));
+    sourceApps.Add(source3.Install (remoteHost3));
+    PacketSinkHelper sink3 ("ns3::TcpSocketFactory", InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(2), port));
+  	sinkApps.Add(sink3.Install (ueTrafficNodeContainer.Get(2)));
+  	
+  	
+  	
+  	
+  	
+  	
+  	
+  	
+  	
+
+	// The sink will always listen to the specified ports
+	
+	
+	//PacketSinkHelper sink2 ("ns3::TcpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), port));
+	
+	
+	
+	
+	
+	
+	
 	  
 	  
 	  
@@ -430,84 +439,6 @@ double totalTxPower = 4; //dBm
     
     nrHelper->ActivateDedicatedEpsBearer(ueTrafficNetDevContainer, voiceBearer, voiceTft);
 
-
-    /*Address ueSinkLocalAddress(InetSocketAddress(ueTrafficIpIfaceContainer.GetAddress(0), porttcp));
-    PacketSinkHelper packetSinkHelper("ns3::TcpSocketFactory", ueSinkLocalAddress);
-    ApplicationContainer sinkApp = packetSinkHelper.Install(ueTrafficNodeContainer.Get(0));
-    sinkApp.Start(tcpAppStartTime);
-    sinkApp.Stop(simTime);
-
-    Address ueSinkLocalAddress2(InetSocketAddress(ueTrafficIpIfaceContainer.GetAddress(1), porttcp2));
-    PacketSinkHelper packetSinkHelper2("ns3::TcpSocketFactory", ueSinkLocalAddress2);
-    ApplicationContainer sinkApp2 = packetSinkHelper2.Install(ueTrafficNodeContainer.Get(1));
-    sinkApp2.Start(tcpAppStartTime);
-    sinkApp2.Stop(simTime);
-
-    Address ueSinkLocalAddress3(InetSocketAddress(ueTrafficIpIfaceContainer.GetAddress(2), porttcp3));
-    PacketSinkHelper packetSinkHelper3("ns3::TcpSocketFactory", ueSinkLocalAddress3);
-    ApplicationContainer sinkApp3 = packetSinkHelper3.Install(ueTrafficNodeContainer.Get(2));
-    sinkApp3.Start(tcpAppStartTime);
-    sinkApp3.Stop(simTime);
-
-
-
-    
-
-    ApplicationContainer senderApps;
-    EpsBearer voiceBearer(EpsBearer::NGBR_VIDEO_TCP_DEFAULT);
-    // The filter for the voice tcp traffic
-    Ptr<EpcTft> voiceTft = Create<EpcTft>();
-    EpcTft::PacketFilter dlpfVoice;
-    dlpfVoice.localPortStart = porttcp;
-    dlpfVoice.localPortEnd = porttcp3;
-    voiceTft->Add(dlpfVoice);
-
-
-
-
-    Ptr<NetDevice> ueDevice = ueTrafficNetDevContainer.Get(0);
-    Ptr<NetDevice> ueDevice2 = ueTrafficNetDevContainer.Get(1);
-    Ptr<NetDevice> ueDevice3 = ueTrafficNetDevContainer.Get(2);
-   
-    nrHelper->ActivateDedicatedEpsBearer(ueDevice, voiceBearer, voiceTft);
-    nrHelper->ActivateDedicatedEpsBearer(ueDevice2, voiceBearer, voiceTft);
-    nrHelper->ActivateDedicatedEpsBearer(ueDevice3, voiceBearer, voiceTft);
-
-
-    OnOffHelper onOffHelper("ns3::TcpSocketFactory", Address());
-    OnOffHelper onOffHelper2("ns3::TcpSocketFactory", Address());
-    OnOffHelper onOffHelper3("ns3::TcpSocketFactory", Address());
-
-    onOffHelper.SetAttribute("OnTime", StringValue("ns3::ConstantRandomVariable[Constant=1000]"));
-    onOffHelper.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0]"));
-    onOffHelper.SetAttribute ("DataRate",StringValue ("200Gbps"));
-    onOffHelper.SetAttribute ("PacketSize",UintegerValue(20));
-
-    onOffHelper2.SetAttribute("OnTime", StringValue("ns3::ConstantRandomVariable[Constant=1000]"));
-    onOffHelper2.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0]"));
-    onOffHelper2.SetAttribute ("DataRate",StringValue ("200Gbps"));
-    onOffHelper2.SetAttribute ("PacketSize",UintegerValue(20));
-
-    onOffHelper3.SetAttribute("OnTime", StringValue("ns3::ConstantRandomVariable[Constant=1000]"));
-    onOffHelper3.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0]"));
-    onOffHelper3.SetAttribute ("DataRate",StringValue ("200Gbps"));
-    onOffHelper3.SetAttribute ("PacketSize",UintegerValue(20));
-
-    AddressValue remoteAddress(InetSocketAddress(ueTrafficIpIfaceContainer.GetAddress(0), porttcp));
-    AddressValue remoteAddress2(InetSocketAddress(ueTrafficIpIfaceContainer.GetAddress(1), porttcp2));
-    AddressValue remoteAddress3(InetSocketAddress(ueTrafficIpIfaceContainer.GetAddress(2), porttcp3));
-
-    onOffHelper.SetAttribute("Remote", remoteAddress);
-    onOffHelper2.SetAttribute("Remote", remoteAddress2);
-    onOffHelper3.SetAttribute("Remote", remoteAddress3);
-
-    senderApps.Add(onOffHelper.Install(remoteHostContainer.Get(0)));
-    senderApps.Add(onOffHelper2.Install(remoteHostContainer.Get(1)));
-    senderApps.Add(onOffHelper3.Install(remoteHostContainer.Get(2)));
-
-    senderApps.Start(tcpAppStartTime);
-    senderApps.Stop(simTime);
-*/
 
     nrHelper->EnableTraces();
 
@@ -647,99 +578,3 @@ double totalTxPower = 4; //dBm
 
 
 
-// ... (existing includes and code)
-
-// Remove file-related operations
-// std::ofstream outFile;
-// std::string filename = outputDir + "/" + simTag;
-// outFile.open(filename.c_str(), std::ofstream::out | std::ofstream::trunc);
-// if (!outFile.is_open())
-// {
-//     std::cerr << "Can't open file " << filename << std::endl;
-//     return 1;
-// }
-
-// outFile.setf(std::ios_base::fixed);
-
-// Print per-flow statistics
-//monitor->CheckForLostPackets();
-//Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier>(flowmonHelper.GetClassifier());
-//FlowMonitor::FlowStatsContainer stats = monitor->GetFlowStats();
-
-/*double averageFlowThroughput = 0.0;
-double averageFlowDelay = 0.0;
-
-double flowDuration = (simTime - tcpAppStartTime).GetSeconds();
-for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i = stats.begin(); i != stats.end(); ++i)
-{
-    Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow(i->first);
-    std::stringstream protoStream;
-    protoStream << (uint16_t)t.protocol;
-    if (t.protocol == 6)
-    {
-        protoStream.str("TCP");
-    }
-    if (t.protocol == 17)
-    {
-        protoStream.str("UDP");
-    }
-
-    // Change from outFile to std::cout
-    std::cout << "Flow " << i->first << " (" << t.sourceAddress << ":" << t.sourcePort << " -> "
-              << t.destinationAddress << ":" << t.destinationPort << ") proto "
-              << protoStream.str() << "\n";
-    std::cout << "  Tx Packets: " << i->second.txPackets << "\n";
-    std::cout << "  Tx Bytes:   " << i->second.txBytes << "\n";
-    std::cout << "  TxOffered:  " << i->second.txBytes * 8.0 / flowDuration / 1000.0 / 1000.0
-              << " Mbps\n";
-    std::cout << "  Rx Bytes:   " << i->second.rxBytes << "\n";
-
-    if (i->second.rxPackets > 0)
-    {
-        averageFlowThroughput += i->second.rxBytes * 8.0 / flowDuration / 1000 / 1000;
-        averageFlowDelay += 1000 * i->second.delaySum.GetSeconds() / i->second.rxPackets;
-
-        std::cout << "  Throughput: " << i->second.rxBytes * 8.0 / flowDuration / 1000 / 1000
-                  << " Mbps\n";
-        std::cout << "  Mean delay:  " << 1000 * i->second.delaySum.GetSeconds() / i->second.rxPackets << " ms\n";
-        std::cout << "  Mean jitter:  " << 1000 * i->second.jitterSum.GetSeconds() / i->second.rxPackets << " ms\n";
-    }
-    else
-    {
-        std::cout << "  Throughput:  0 Mbps\n";
-        std::cout << "  Mean delay:  0 ms\n";
-        std::cout << "  Mean jitter: 0 ms\n";
-    }
-
-    std::cout << "  Rx Packets: " << i->second.rxPackets << "\n";
-}
-
-double meanFlowThroughput = averageFlowThroughput / stats.size();
-double meanFlowDelay = averageFlowDelay / stats.size();
-
-std::cout << "\n\n  Mean flow throughput: " << meanFlowThroughput << "\n";
-std::cout << "  Mean flow delay: " << meanFlowDelay << "\n";
-
-// Remove file closing
-// outFile.close();
-
-Simulator::Destroy();
-
-if (argc == 0)
-{
-    double toleranceMeanFlowThroughput = 0.0001 * 56.258560;
-    double toleranceMeanFlowDelay = 0.0001 * 0.553292;
-
-    if (meanFlowThroughput >= 56.258560 - toleranceMeanFlowThroughput &&
-        meanFlowThroughput <= 56.258560 + toleranceMeanFlowThroughput &&
-        meanFlowDelay >= 0.553292 - toleranceMeanFlowDelay &&
-        meanFlowDelay <= 0.553292 + toleranceMeanFlowDelay)
-    {
-        return EXIT_SUCCESS;
-    }
-    else
-    {
-        return EXIT_FAILURE;
-    }
-}
-}*/
