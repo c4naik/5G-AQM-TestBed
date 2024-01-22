@@ -37,7 +37,7 @@ main(int argc, char* argv[])
 
 /////////////////////////////////////////////////////////
 
-uint32_t maxBytes =0;  //tcp bulk sender
+uint32_t maxBytes =1000;  //tcp bulk sender
 
 std::string dataRateRemoteHostLink = "10Gbps";
 double bandwidthBand1 = 6000e6;  //6000MHz  Mbps = MHz * 8 ->  48Gbps
@@ -45,7 +45,7 @@ double bandwidthBand1 = 6000e6;  //6000MHz  Mbps = MHz * 8 ->  48Gbps
 Time delayRemoteHostLink = MilliSeconds(1);
 Time coreLatency = MilliSeconds(0.1);
 
-Time simTime = Seconds(3.1);
+Time simTime = Seconds(3.01);
 Time tcpAppStartTime = Seconds(1.0);
 
 std::string simTag = "SimResults.txt";
@@ -55,13 +55,15 @@ std::string outputDir = "./";
 Config::SetDefault("ns3::LteRlcUm::MaxTxBufferSize", UintegerValue(9999999));
 
 //AQM Algorithm
-std::string aqmAlgo = "ns3::CoDelQueueDisc";
+std::string aqmAlgo = "ns3::RedQueueDisc";
 
 std::string bwpTraffic = "GBR_GAMING";
 EpsBearer voiceBearer(EpsBearer::GBR_GAMING);
 uint16_t numerologyBwp1 = 4;
 double centralFrequencyBand1 = 28e9;  //28 GHz  
 double totalTxPower = 4; //dBm
+
+std::string transportProtocol = "ns3::TcpSocketFactory";
 
 /////////////////////////////////////////////////////////
 
@@ -127,7 +129,7 @@ double totalTxPower = 4; //dBm
     for (uint32_t j = 0; j < gridScenario.GetUserTerminals().GetN(); ++j)
     {
         Ptr<Node> ue = gridScenario.GetUserTerminals().Get(j);
-        {
+        { //outFile<<ue<<"\n";
             ueTrafficNodeContainer.Add(ue);
         
         }
@@ -328,49 +330,17 @@ double totalTxPower = 4; //dBm
     NetDeviceContainer internetDevices7 = p2ph.Install(pgw, remoteHost7);
 
 
-   /* PointToPointHelper p2ph2;
-    p2ph2.SetDeviceAttribute("DataRate", DataRateValue(DataRate(dataRateRemoteHostLink)));
-    p2ph2.SetDeviceAttribute("Mtu", UintegerValue(2500));
-    p2ph2.SetChannelAttribute("Delay", TimeValue(delayRemoteHostLink));
-    NetDeviceContainer internetDevices2 = p2ph2.Install(pgw, remoteHost2);
-    
-    PointToPointHelper p2ph3;
-    p2ph3.SetDeviceAttribute("DataRate", DataRateValue(DataRate(dataRateRemoteHostLink)));
-    p2ph3.SetDeviceAttribute("Mtu", UintegerValue(2500));
-    p2ph3.SetChannelAttribute("Delay", TimeValue(delayRemoteHostLink));
-    NetDeviceContainer internetDevices3 = p2ph3.Install(pgw, remoteHost3);
-
-    PointToPointHelper p2ph4;
-    p2ph4.SetDeviceAttribute("DataRate", DataRateValue(DataRate(dataRateRemoteHostLink)));
-    p2ph4.SetDeviceAttribute("Mtu", UintegerValue(2500));
-    p2ph4.SetChannelAttribute("Delay", TimeValue(delayRemoteHostLink));
-    NetDeviceContainer internetDevices4 = p2ph4.Install(pgw, remoteHost4);
-
-    PointToPointHelper p2ph5;
-    p2ph5.SetDeviceAttribute("DataRate", DataRateValue(DataRate(dataRateRemoteHostLink)));
-    p2ph5.SetDeviceAttribute("Mtu", UintegerValue(2500));
-    p2ph5.SetChannelAttribute("Delay", TimeValue(delayRemoteHostLink));
-    NetDeviceContainer internetDevices5 = p2ph5.Install(pgw, remoteHost5);
-
-    PointToPointHelper p2ph6;
-    p2ph6.SetDeviceAttribute("DataRate", DataRateValue(DataRate(dataRateRemoteHostLink)));
-    p2ph6.SetDeviceAttribute("Mtu", UintegerValue(2500));
-    p2ph6.SetChannelAttribute("Delay", TimeValue(delayRemoteHostLink));
-    NetDeviceContainer internetDevices6 = p2ph6.Install(pgw, remoteHost6);
-
-    PointToPointHelper p2ph7;
-    p2ph7.SetDeviceAttribute("DataRate", DataRateValue(DataRate(dataRateRemoteHostLink)));
-    p2ph7.SetDeviceAttribute("Mtu", UintegerValue(2500));
-    p2ph7.SetChannelAttribute("Delay", TimeValue(delayRemoteHostLink));
-    NetDeviceContainer internetDevices7 = p2ph7.Install(pgw, remoteHost7);
-    */
-    p2ph.EnablePcapAll("R");
+    p2ph.EnablePcapAll("C");
     
     NetDeviceContainer internalNet;
     internalNet.Add(enbNetDev);
     internalNet.Add(internetDevices1);
     internalNet.Add(internetDevices2);
     internalNet.Add(internetDevices3);
+    internalNet.Add(internetDevices4);
+    internalNet.Add(internetDevices5);
+    internalNet.Add(internetDevices6);
+    internalNet.Add(internetDevices7);
 
     QueueDiscContainer queueDiscs;
     TrafficControlHelper tch;   //AQM implementation
@@ -405,16 +375,16 @@ double totalTxPower = 4; //dBm
     Ptr<Ipv4StaticRouting> remoteHostStaticRouting3 = ipv4RoutingHelper.GetStaticRouting(remoteHost3->GetObject<Ipv4>());
     remoteHostStaticRouting3->AddNetworkRouteTo(Ipv4Address("7.0.0.4"), Ipv4Mask("255.0.0.0"), 1);
 
-    Ptr<Ipv4StaticRouting> remoteHostStaticRouting4 = ipv4RoutingHelper.GetStaticRouting(remoteHost1->GetObject<Ipv4>());
+    Ptr<Ipv4StaticRouting> remoteHostStaticRouting4 = ipv4RoutingHelper.GetStaticRouting(remoteHost4->GetObject<Ipv4>());
     remoteHostStaticRouting4->AddNetworkRouteTo(Ipv4Address("7.0.0.5"), Ipv4Mask("255.0.0.0"), 1);
     
-    Ptr<Ipv4StaticRouting> remoteHostStaticRouting5 = ipv4RoutingHelper.GetStaticRouting(remoteHost2->GetObject<Ipv4>());
+    Ptr<Ipv4StaticRouting> remoteHostStaticRouting5 = ipv4RoutingHelper.GetStaticRouting(remoteHost5->GetObject<Ipv4>());
     remoteHostStaticRouting5->AddNetworkRouteTo(Ipv4Address("7.0.0.6"), Ipv4Mask("255.0.0.0"), 1);
     
-    Ptr<Ipv4StaticRouting> remoteHostStaticRouting6 = ipv4RoutingHelper.GetStaticRouting(remoteHost3->GetObject<Ipv4>());
+    Ptr<Ipv4StaticRouting> remoteHostStaticRouting6 = ipv4RoutingHelper.GetStaticRouting(remoteHost6->GetObject<Ipv4>());
     remoteHostStaticRouting6->AddNetworkRouteTo(Ipv4Address("7.0.0.7"), Ipv4Mask("255.0.0.0"), 1);
 
-    Ptr<Ipv4StaticRouting> remoteHostStaticRouting7 = ipv4RoutingHelper.GetStaticRouting(remoteHost3->GetObject<Ipv4>());
+    Ptr<Ipv4StaticRouting> remoteHostStaticRouting7 = ipv4RoutingHelper.GetStaticRouting(remoteHost7->GetObject<Ipv4>());
     remoteHostStaticRouting7->AddNetworkRouteTo(Ipv4Address("7.0.0.8"), Ipv4Mask("255.0.0.0"), 1);
 
     
@@ -445,20 +415,30 @@ double totalTxPower = 4; //dBm
 
     ApplicationContainer sourceApps;
     sourceApps.Start (tcpAppStartTime);
-  	sourceApps.Stop (simTime);
+    sourceApps.Stop (simTime);
 
     ApplicationContainer sinkApps;
     sinkApps.Start (tcpAppStartTime);
-	sinkApps.Stop (simTime);
+    sinkApps.Stop (simTime);
     
+    TrafficGeneratorHelper ftpHelper(transportProtocol,
+                                             Address(),
+                                             TrafficGeneratorNgmnFtpMulti::GetTypeId());
+    ftpHelper.SetAttribute("PacketSize", UintegerValue(1448));
+    ftpHelper.SetAttribute("MaxFileSize", UintegerValue(5e6));//5e6
+    ftpHelper.SetAttribute("Remote",AddressValue(InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(0), port)));
+    sourceApps.Add(ftpHelper.Install(remoteHost1));
+    PacketSinkHelper packetSinkHelper10(transportProtocol,InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(0), port) );
+    sinkApps.Add(packetSinkHelper10.Install(ueTrafficNodeContainer.Get(0)));
+    /*
     OnOffHelper onOffHelper1("ns3::UdpSocketFactory", InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(0), port));
     onOffHelper1.SetAttribute("OnTime", StringValue("ns3::ConstantRandomVariable[Constant=1000]"));
     onOffHelper1.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0]"));
-    onOffHelper1.SetAttribute ("DataRate",StringValue ("100Mbps"));
+    onOffHelper1.SetAttribute ("DataRate",StringValue ("1Kbps"));
     onOffHelper1.SetAttribute ("PacketSize",UintegerValue(20)); 
     sourceApps.Add(onOffHelper1.Install(remoteHost1)); 
     PacketSinkHelper sink1 ("ns3::UdpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), port));
-    sinkApps.Add(sink1.Install (ueTrafficNodeContainer.Get(0)));
+    sinkApps.Add(sink1.Install (ueTrafficNodeContainer.Get(0))); */
     
     uint32_t MaxPacketSize = 1024;
     Time interPacketInterval = Seconds (0.05);
@@ -476,21 +456,44 @@ double totalTxPower = 4; //dBm
 
     BulkSendHelper source3 ("ns3::TcpSocketFactory", InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(2), port));
   	// Set the amount of data to send in bytes.  Zero is unlimited.
-  	source3.SetAttribute ("MaxBytes", UintegerValue (maxBytes));
+    source3.SetAttribute ("MaxBytes", UintegerValue (maxBytes));
     sourceApps.Add(source3.Install (remoteHost3));
     PacketSinkHelper sink3 ("ns3::TcpSocketFactory", InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(2), port));
-  	sinkApps.Add(sink3.Install (ueTrafficNodeContainer.Get(2)));
+    sinkApps.Add(sink3.Install (ueTrafficNodeContainer.Get(2)));
   	
-  	//http, voip, gaming, video, ftpmultiple, 
+  	//http, voip, gaming, video, ftpmultiple,
+   /* BulkSendHelper source4 ("ns3::TcpSocketFactory", InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(3), port));
+  	// Set the amount of data to send in bytes.  Zero is unlimited.
+    source4.SetAttribute ("MaxBytes", UintegerValue (maxBytes));
+    sourceApps.Add(source4.Install (remoteHost4));
+    PacketSinkHelper sink4 ("ns3::TcpSocketFactory", InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(3), port));
+    sinkApps.Add(sink4.Install (ueTrafficNodeContainer.Get(3))); 
+    
+    OnOffHelper onOffHelper5("ns3::UdpSocketFactory", InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(4), port));
+    onOffHelper5.SetAttribute("OnTime", StringValue("ns3::ConstantRandomVariable[Constant=1000]"));
+    onOffHelper5.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0]"));
+    onOffHelper5.SetAttribute ("DataRate",StringValue ("1Kbps"));
+    onOffHelper5.SetAttribute ("PacketSize",UintegerValue(20)); 
+    sourceApps.Add(onOffHelper5.Install(remoteHost5)); 
+    PacketSinkHelper sink5 ("ns3::UdpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), port));
+    sinkApps.Add(sink5.Install (ueTrafficNodeContainer.Get(4)));*/
 
-    uint32_t portRemoteHost = 49153;
-    ThreeGppHttpServerHelper httpServer(InetSocketAddress (Ipv4Address("11.0.0.9"), portRemoteHost));
-    sinkApps.Add(httpServer.Install(remoteHost4));
-  	ThreeGppHttpClientHelper httpClient4(InetSocketAddress (Ipv4Address("11.0.0.9"), portRemoteHost));
-    sourceApps.Add(httpClient4.Install(ueTrafficNodeContainer.Get(3)));
+    //uint32_t portRemoteHost = 49153;
+    ThreeGppHttpServerHelper httpServer4(InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(3), port));
+    sourceApps.Add(httpServer4.Install(remoteHost4));
+    Ptr<ThreeGppHttpServer> httpServer = sourceApps.Get(3)->GetObject<ThreeGppHttpServer>();
+    PointerValue varPtr;
+    httpServer->GetAttribute("Variables", varPtr);
+    Ptr<ThreeGppHttpVariables> httpVariables = varPtr.Get<ThreeGppHttpVariables>();
+    httpVariables->SetMainObjectSizeMean(102400);  // 100kB
+    httpVariables->SetMainObjectSizeStdDev(40960); // 40kB
+  	
+    ThreeGppHttpClientHelper httpClient4(Ipv4Address("11.0.0.9"));
+    sinkApps.Add(httpClient4.Install(ueTrafficNodeContainer.Get(3)));
+    
 
-/*
-    std::string transportProtocol = "ns3::TcpSocketFactory";
+
+    
     TrafficGeneratorHelper trafficGeneratorHelper(transportProtocol,
                                                           Address(),
                                                           TrafficGeneratorNgmnVoip::GetTypeId());
@@ -506,45 +509,45 @@ double totalTxPower = 4; //dBm
     sinkApps.Add(packetSinkHelper5.Install(ueTrafficNodeContainer.Get(4)));
 
 
-    TrafficGeneratorHelper trafficGeneratorHelperg(transportProtocol,
+    TrafficGeneratorHelper trafficGeneratorHelper1(transportProtocol,
                                                           Address(),
                                                           TrafficGeneratorNgmnGaming::GetTypeId());
-    trafficGeneratorHelperg.SetAttribute("IsDownlink", BooleanValue(true));
-    trafficGeneratorHelperg.SetAttribute("aParamPacketSizeDl", UintegerValue(120));
-    trafficGeneratorHelperg.SetAttribute("bParamPacketSizeDl", DoubleValue(36));
-    trafficGeneratorHelperg.SetAttribute("aParamPacketArrivalDl", DoubleValue(45));
-    trafficGeneratorHelperg.SetAttribute("bParamPacketArrivalDl", DoubleValue(5.7));
-    trafficGeneratorHelperg.SetAttribute("InitialPacketArrivalMin", UintegerValue(0));
-    trafficGeneratorHelperg.SetAttribute("InitialPacketArrivalMax", UintegerValue(40));
-  	trafficGeneratorHelperg.SetAttribute("Remote",AddressValue(InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(5), port)));
-    sourceApps.Add(trafficGeneratorHelperg.Install(remoteHost6));
+    trafficGeneratorHelper1.SetAttribute("IsDownlink", BooleanValue(true));
+    trafficGeneratorHelper1.SetAttribute("aParamPacketSizeDl", UintegerValue(120));
+    trafficGeneratorHelper1.SetAttribute("bParamPacketSizeDl", DoubleValue(36));
+    trafficGeneratorHelper1.SetAttribute("aParamPacketArrivalDl", DoubleValue(45));
+    trafficGeneratorHelper1.SetAttribute("bParamPacketArrivalDl", DoubleValue(5.7));
+    trafficGeneratorHelper1.SetAttribute("InitialPacketArrivalMin", UintegerValue(0));
+    trafficGeneratorHelper1.SetAttribute("InitialPacketArrivalMax", UintegerValue(40));
+    trafficGeneratorHelper1.SetAttribute("Remote",AddressValue(InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(5), port)));
+    sourceApps.Add(trafficGeneratorHelper1.Install(remoteHost6));
     PacketSinkHelper packetSinkHelper6(transportProtocol,InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(5), port) );
     sinkApps.Add(packetSinkHelper6.Install(ueTrafficNodeContainer.Get(5)));
 
 
-    TrafficGeneratorHelper trafficGeneratorHelperg(transportProtocol,
+    TrafficGeneratorHelper trafficGeneratorHelper2(transportProtocol,
                                                           Address(),
                                                           TrafficGeneratorNgmnVideo::GetTypeId());
-    trafficGeneratorHelper.SetAttribute("NumberOfPacketsInFrame", UintegerValue(8));
-    trafficGeneratorHelper.SetAttribute("InterframeIntervalTime",
+    trafficGeneratorHelper2.SetAttribute("NumberOfPacketsInFrame", UintegerValue(8));
+    trafficGeneratorHelper2.SetAttribute("InterframeIntervalTime",
                                                 TimeValue(Seconds(0.100)));
-  	trafficGeneratorHelperg.SetAttribute("Remote",AddressValue(InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(6), port)));
-    sourceApps.Add(trafficGeneratorHelperg.Install(remoteHost7));
+  	trafficGeneratorHelper2.SetAttribute("Remote",AddressValue(InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(6), port)));
+    sourceApps.Add(trafficGeneratorHelper2.Install(remoteHost7));
     PacketSinkHelper packetSinkHelper7(transportProtocol,InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(6), port) );
     sinkApps.Add(packetSinkHelper7.Install(ueTrafficNodeContainer.Get(6)));
 
 
-
+/*
 ///Put this in place of onoff
     TrafficGeneratorHelper ftpHelper(transportProtocol,
                                              Address(),
                                              TrafficGeneratorNgmnFtpMulti::GetTypeId());
     ftpHelper.SetAttribute("PacketSize", UintegerValue(1448));
     ftpHelper.SetAttribute("MaxFileSize", UintegerValue(5e6));
-    trafficGeneratorHelperg.SetAttribute("Remote",AddressValue(InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(0), port)));
-    sourceApps.Add(trafficGeneratorHelperg.Install(remoteHost1));
-    PacketSinkHelper packetSinkHelper1(transportProtocol,InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(0), port) );
-    sinkApps.Add(packetSinkHelper1.Install(ueTrafficNodeContainer.Get(0)));
+    ftpHelper.SetAttribute("Remote",AddressValue(InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(0), port)));
+    sourceApps.Add(ftpHelper.Install(remoteHost1));
+    PacketSinkHelper packetSinkHelper10(transportProtocol,InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(0), port) );
+    sinkApps.Add(packetSinkHelper10.Install(ueTrafficNodeContainer.Get(0)));
 
 
   	*/
