@@ -40,26 +40,28 @@ main(int argc, char* argv[])
 uint32_t maxBytes =1000;  //tcp bulk sender
 
 std::string dataRateRemoteHostLink = "10Gbps";
-double bandwidthBand1 = 6000e6;  //6000MHz  Mbps = MHz * 8 ->  48Gbps
+std::string dataRatebottleneckLink = "2Gbps";
+double bandwidthBand1 = 8000e6;  //6000MHz  Mbps = MHz * 8 ->  48Gbps
 
 Time delayRemoteHostLink = MilliSeconds(1);
 Time coreLatency = MilliSeconds(0.1);
 
-Time simTime = Seconds(3.01);
+Time simTime = Seconds(3.11);
 Time tcpAppStartTime = Seconds(1.0);
 
 std::string simTag = "SimResults.txt";
 std::string outputDir = "./";
 
 //RLC Buffer
-Config::SetDefault("ns3::LteRlcUm::MaxTxBufferSize", UintegerValue(9999999));
+Config::SetDefault("ns3::LteRlcUm::MaxTxBufferSize", UintegerValue(999));
 
 //AQM Algorithm
 std::string aqmAlgo = "ns3::RedQueueDisc";
 
-std::string bwpTraffic = "GBR_GAMING";
-EpsBearer voiceBearer(EpsBearer::GBR_GAMING);
-uint16_t numerologyBwp1 = 4;
+//std::string bwpTraffic = "GBR_GAMING";
+
+
+uint16_t numerologyBwp1 = 5;
 double centralFrequencyBand1 = 28e9;  //28 GHz  
 double totalTxPower = 4; //dBm
 
@@ -148,7 +150,7 @@ std::string transportProtocol = "ns3::TcpSocketFactory";
 
     BandwidthPartInfoPtrVector allBwps;
     CcBwpCreator ccBwpCreator;
-    const uint8_t numCcPerBand = 1; // in this example, both bands have a single CC
+    const uint8_t numCcPerBand = 1; 
 
     // Create the configuration for the CcBwpHelper. SimpleOperationBandConf creates
     // a single BWP per CC
@@ -182,6 +184,8 @@ std::string transportProtocol = "ns3::TcpSocketFactory";
 
     // Core latency
     epcHelper->SetAttribute("S1uLinkDelay", TimeValue(coreLatency));
+    epcHelper->SetAttribute("S1uLinkDataRate", DataRateValue(DataRate("2Gb/s")));
+    
 
     // Antennas for all the UEs
     nrHelper->SetUeAntennaAttribute("NumRows", UintegerValue(2));
@@ -199,11 +203,11 @@ std::string transportProtocol = "ns3::TcpSocketFactory";
     
 
     // gNb routing between Bearer and bandwidh part
-    nrHelper->SetGnbBwpManagerAlgorithmAttribute(bwpTraffic, UintegerValue(bwpId));
+    //nrHelper->SetGnbBwpManagerAlgorithmAttribute(bwpTraffic, UintegerValue(bwpId));
 
     //NGBR_VIDEO_TCP_DEFAULT
     // Ue routing between Bearer and bandwidth part
-    nrHelper->SetUeBwpManagerAlgorithmAttribute(bwpTraffic, UintegerValue(bwpId));
+    //nrHelper->SetUeBwpManagerAlgorithmAttribute(bwpTraffic, UintegerValue(bwpId));
 
     /*
      * We miss many other parameters. By default, not configuring them is equivalent
@@ -257,6 +261,8 @@ std::string transportProtocol = "ns3::TcpSocketFactory";
     // for this part as well.
 
     Ptr<Node> pgw = epcHelper->GetPgwNode();
+    Ptr<Node> sgw = epcHelper->GetSgwNode();
+    Ptr<Node> gnbptr=gridScenario.GetBaseStations().Get(0);
     NodeContainer remoteHostContainer;
     remoteHostContainer.Create(7);
     Ptr<Node> remoteHost1 = remoteHostContainer.Get(0);
@@ -270,7 +276,7 @@ std::string transportProtocol = "ns3::TcpSocketFactory";
     internet.Install(remoteHostContainer);
     
     NodeContainer pgwcontainer = epcHelper->GetPgwNode();
-    
+    NodeContainer sgwcontainer = epcHelper->GetSgwNode();
     MobilityHelper mobility;
     mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
     mobility.Install(remoteHostContainer);
@@ -329,7 +335,15 @@ std::string transportProtocol = "ns3::TcpSocketFactory";
     NetDeviceContainer internetDevices6 = p2ph.Install(pgw, remoteHost6);
     NetDeviceContainer internetDevices7 = p2ph.Install(pgw, remoteHost7);
 
-
+    // PointtoPoint connection pgw --->sgw
+    PointToPointHelper p2p;
+    p2p.SetDeviceAttribute("DataRate", DataRateValue(DataRate(dataRatebottleneckLink)));
+    p2p.SetDeviceAttribute("Mtu", UintegerValue(2500));
+    p2p.SetChannelAttribute("Delay", TimeValue(delayRemoteHostLink));
+    //NetDeviceContainer gatewayNetdevices=p2p.Install(sgw,pgw);
+    //NetDeviceContainer gatewayNetdevices2=p2p.Install(sgw,gnbptr);
+    
+    
     p2ph.EnablePcapAll("C");
     
     NetDeviceContainer internalNet;
@@ -341,11 +355,12 @@ std::string transportProtocol = "ns3::TcpSocketFactory";
     internalNet.Add(internetDevices5);
     internalNet.Add(internetDevices6);
     internalNet.Add(internetDevices7);
-
+    //internalNet.Add(gatewayNetdevices);
+    //internalNet.Add(gatewayNetdevices2);
     QueueDiscContainer queueDiscs;
     TrafficControlHelper tch;   //AQM implementation
     tch.SetRootQueueDisc (aqmAlgo);
-    queueDiscs = tch.Install(internalNet); 
+     queueDiscs = tch.Install(internalNet); 
     AnimationInterface anim("working.xml");
 
     Ipv4AddressHelper ipv4h;
@@ -426,9 +441,9 @@ std::string transportProtocol = "ns3::TcpSocketFactory";
                                              TrafficGeneratorNgmnFtpMulti::GetTypeId());
     ftpHelper.SetAttribute("PacketSize", UintegerValue(1448));
     ftpHelper.SetAttribute("MaxFileSize", UintegerValue(5e6));//5e6
-    ftpHelper.SetAttribute("Remote",AddressValue(InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(0), port)));
+    ftpHelper.SetAttribute("Remote",AddressValue(InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(0), 20)));
     sourceApps.Add(ftpHelper.Install(remoteHost1));
-    PacketSinkHelper packetSinkHelper10(transportProtocol,InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(0), port) );
+    PacketSinkHelper packetSinkHelper10(transportProtocol,InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(0), 20) );
     sinkApps.Add(packetSinkHelper10.Install(ueTrafficNodeContainer.Get(0)));
     /*
     OnOffHelper onOffHelper1("ns3::UdpSocketFactory", InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(0), port));
@@ -456,6 +471,7 @@ std::string transportProtocol = "ns3::TcpSocketFactory";
 
     BulkSendHelper source3 ("ns3::TcpSocketFactory", InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(2), port));
   	// Set the amount of data to send in bytes.  Zero is unlimited.
+    source3.SetAttribute ("MaxBytes", UintegerValue (maxBytes));
     source3.SetAttribute ("MaxBytes", UintegerValue (maxBytes));
     sourceApps.Add(source3.Install (remoteHost3));
     PacketSinkHelper sink3 ("ns3::TcpSocketFactory", InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(2), port));
@@ -491,10 +507,19 @@ std::string transportProtocol = "ns3::TcpSocketFactory";
     ThreeGppHttpClientHelper httpClient4(Ipv4Address("11.0.0.9"));
     sinkApps.Add(httpClient4.Install(ueTrafficNodeContainer.Get(3)));
     
+    
+    /*ThreeGppHttpClientHelper httpClient4(InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(3), port));
+    sourceApps.Add(httpClient4.Install(remoteHost4));
+    
+    ThreeGppHttpServerHelper httpServer4(InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(3), port));
+    sinkApps.Add(httpServer4.Install(ueTrafficNodeContainer.Get(3)));*/
+    //ThreeGppHttpClientHelper httpClient4(Ipv4Address("11.0.0.9"));
+    //sinkApps.Add(httpClient4.Install(ueTrafficNodeContainer.Get(3)));
+
 
 
     
-    TrafficGeneratorHelper trafficGeneratorHelper(transportProtocol,
+    TrafficGeneratorHelper trafficGeneratorHelper("ns3::UdpSocketFactory",
                                                           Address(),
                                                           TrafficGeneratorNgmnVoip::GetTypeId());
     trafficGeneratorHelper.SetAttribute("EncoderFrameLength", UintegerValue(20));
@@ -570,15 +595,22 @@ std::string transportProtocol = "ns3::TcpSocketFactory";
 	  
 	  
 	  
-    // The filter for the voice tcp traffic
-    Ptr<EpcTft> voiceTft = Create<EpcTft>();
-    EpcTft::PacketFilter dlpfVoice;
-    dlpfVoice.localPortStart = port;
-    dlpfVoice.localPortEnd = port;
-    voiceTft->Add(dlpfVoice);
+    // The filter for the traffic
+    Ptr<EpcTft> filterTft = Create<EpcTft>();
+    EpcTft::PacketFilter dlpf;
+    //dlpfVoice.localPortStart = port;
+    //dlpfVoice.localPortEnd = port;
+    filterTft->Add(dlpf);
     
+    EpsBearer gamingBearer(EpsBearer::GBR_GAMING);
+    EpsBearer voiceBearer(EpsBearer::GBR_CONV_VOICE);
+    EpsBearer videoBearer(EpsBearer::GBR_CONV_VIDEO);
+    //EpsBearer gamingBearer(EpsBearer::GBR_GAMING);
+    //EpsBearer gamingBearer(EpsBearer::GBR_GAMING);
     
-    nrHelper->ActivateDedicatedEpsBearer(ueTrafficNetDevContainer, voiceBearer, voiceTft);
+    nrHelper->ActivateDedicatedEpsBearer(ueTrafficNetDevContainer.Get(5), gamingBearer, filterTft);
+    nrHelper->ActivateDedicatedEpsBearer(ueTrafficNetDevContainer.Get(4), voiceBearer, filterTft);
+    nrHelper->ActivateDedicatedEpsBearer(ueTrafficNetDevContainer.Get(6), videoBearer, filterTft);
 
 
     nrHelper->EnableTraces();
