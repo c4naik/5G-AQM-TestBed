@@ -10,6 +10,7 @@
 #include "ns3/network-module.h"
 #include "ns3/nr-module.h"
 #include "ns3/point-to-point-module.h"
+#include "ns3/nr-point-to-point-epc-helper.h"
 #include "ns3/traffic-control-module.h"
 #include "ns3/netanim-module.h"
 #include "ns3/packet-sink.h"
@@ -28,7 +29,7 @@
 
 using namespace ns3;
 
-NS_LOG_COMPONENT_DEFINE("threeflows");
+NS_LOG_COMPONENT_DEFINE("sevenflows");
 
 int
 main(int argc, char* argv[])
@@ -37,13 +38,13 @@ main(int argc, char* argv[])
 
 /////////////////////////////////////////////////////////
 
-uint32_t maxBytes =1000;  //tcp bulk sender
-
+uint32_t maxBytes =100000;  //tcp bulk sender
 std::string dataRateRemoteHostLink = "10Gbps";
-std::string dataRatebottleneckLink = "2Gbps";
-double bandwidthBand1 = 8000e6;  //6000MHz  Mbps = MHz * 8 ->  48Gbps
+std::string coreBandwidth = "8Gb/s";   //BottleNeck S1ULink between gnb and sgw
+std::string udpDataRate = "1000Kbps";
+double bandwidthBand1 = 6000e6;  //6000MHz  Mbps = MHz * 8 ->  48Gbps
 
-Time delayRemoteHostLink = MilliSeconds(1);
+Time delayRemoteHostLink = MilliSeconds(10);
 Time coreLatency = MilliSeconds(0.1);
 
 Time simTime = Seconds(3.11);
@@ -52,13 +53,34 @@ Time tcpAppStartTime = Seconds(1.0);
 std::string simTag = "SimResults.txt";
 std::string outputDir = "./";
 
+										// SDAP    QoS Flows
+										//   |
+								    		// PDCP    Radio Bearer
+										//   |
+										//  RLC  => RLC Channels (Buffer)   
+										//   |
+										//  MAC
+										//   |
+										//  PHY
+
+
 //RLC Buffer
-Config::SetDefault("ns3::LteRlcUm::MaxTxBufferSize", UintegerValue(999));
+Config::SetDefault("ns3::LteRlcUm::MaxTxBufferSize", UintegerValue(100000000)); //RLC Unacknowledged Mode (UM),
 
 //AQM Algorithm
-std::string aqmAlgo = "ns3::RedQueueDisc";
+std::string aqmAlgo = "ns3::PieQueueDisc";
 
-//std::string bwpTraffic = "GBR_GAMING";
+// CoDel
+// FqCoDel
+// Pie
+// FqPie
+// Red
+// Cobalt
+// FqCobalt
+// Fifo
+// PfifoFast
+// Tbf
+// Config::SetDefault("ns3::RedQueueDisc::ARED", BooleanValue(true)); , NLRED
 
 
 uint16_t numerologyBwp1 = 5;
@@ -84,12 +106,15 @@ std::string transportProtocol = "ns3::TcpSocketFactory";
     outFile.setf(std::ios_base::fixed);
 
 
+  /*
+
+	ue1
+	ue2
 
 
 
-
-
-
+  */
+  
     uint16_t gNbNum = 1;
     uint16_t ueNumPergNb = 7;
     bool logging = false;
@@ -184,7 +209,7 @@ std::string transportProtocol = "ns3::TcpSocketFactory";
 
     // Core latency
     epcHelper->SetAttribute("S1uLinkDelay", TimeValue(coreLatency));
-    epcHelper->SetAttribute("S1uLinkDataRate", DataRateValue(DataRate("2Gb/s")));
+    epcHelper->SetAttribute("S1uLinkDataRate", DataRateValue(DataRate(coreBandwidth)));
     
 
     // Antennas for all the UEs
@@ -199,7 +224,7 @@ std::string transportProtocol = "ns3::TcpSocketFactory";
     nrHelper->SetGnbAntennaAttribute("AntennaElement",
                                      PointerValue(CreateObject<IsotropicAntennaModel>()));
 
-    uint32_t bwpId = 0;
+    //uint32_t bwpId = 0;
     
 
     // gNb routing between Bearer and bandwidh part
@@ -260,6 +285,9 @@ std::string transportProtocol = "ns3::TcpSocketFactory";
     // From here, it is standard NS3. In the future, we will create helpers
     // for this part as well.
 
+
+
+
     Ptr<Node> pgw = epcHelper->GetPgwNode();
     Ptr<Node> sgw = epcHelper->GetSgwNode();
     Ptr<Node> gnbptr=gridScenario.GetBaseStations().Get(0);
@@ -277,31 +305,48 @@ std::string transportProtocol = "ns3::TcpSocketFactory";
     
     NodeContainer pgwcontainer = epcHelper->GetPgwNode();
     NodeContainer sgwcontainer = epcHelper->GetSgwNode();
+    
+    
+    
+    
+    
+    
+    
+    ///////////////////////////////////////////// MOBILITY POSITIONS /////////////////////////////////////////////
     MobilityHelper mobility;
+    
     mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
     mobility.Install(remoteHostContainer);
     mobility.Install(gnb);
-    mobility.Install(ut);
+    //mobility.Install(ut);
     mobility.Install(pgwcontainer);
+    mobility.Install(sgwcontainer);
     
-    Ptr<ConstantPositionMobilityModel> u1 = ut.Get (0)->GetObject<ConstantPositionMobilityModel> ();
-    Ptr<ConstantPositionMobilityModel> u2 = ut.Get (1)->GetObject<ConstantPositionMobilityModel> ();
-    Ptr<ConstantPositionMobilityModel> u3 = ut.Get (2)->GetObject<ConstantPositionMobilityModel> ();
-    Ptr<ConstantPositionMobilityModel> u4 = ut.Get (3)->GetObject<ConstantPositionMobilityModel> ();
-    Ptr<ConstantPositionMobilityModel> u5 = ut.Get (4)->GetObject<ConstantPositionMobilityModel> ();
-    Ptr<ConstantPositionMobilityModel> u6 = ut.Get (5)->GetObject<ConstantPositionMobilityModel> ();
-    Ptr<ConstantPositionMobilityModel> u7 = ut.Get (6)->GetObject<ConstantPositionMobilityModel> ();
+    MobilityHelper mobility1;
+    mobility1.SetPositionAllocator ("ns3::GridPositionAllocator",
+    "MinX", DoubleValue (0.0),
+    "MinY", DoubleValue (20.0),
+    "DeltaX", DoubleValue (2.0),
+    "DeltaY", DoubleValue (10.0),
+    "GridWidth", UintegerValue (1),
+    "LayoutType", StringValue ("RowFirst"));
 
-    u1->SetPosition (Vector ( 0.0, 20.0, 0  ));
-    u2->SetPosition (Vector ( 0.0, 30.0, 0  ));
-    u3->SetPosition (Vector ( 0.0, 40.0, 0  ));
-    u4->SetPosition (Vector ( 0.0, 50.0, 0  ));
-    u5->SetPosition (Vector ( 0.0, 60.0, 0  ));
-    u6->SetPosition (Vector ( 0.0, 70.0, 0  ));
-    u7->SetPosition (Vector ( 0.0, 80.0, 0  ));
+     mobility1.SetMobilityModel ("ns3::RandomWalk2dMobilityModel",
+     "Bounds", RectangleValue (Rectangle (0, 20, 0, 100)));
+
+    mobility1.Install(ut);
+    
+    
+    //double hBS = 10;
+    //double hUT = 1.5;
+    //double speed = 1;             // in m/s for walking UT.
+      
     
     Ptr<ConstantPositionMobilityModel> g1 = gnb.Get (0)->GetObject<ConstantPositionMobilityModel> ();
     g1->SetPosition (Vector ( 10.0, 50.0, 0  ));
+    
+    Ptr<ConstantPositionMobilityModel> s1 = sgwcontainer.Get (0)->GetObject<ConstantPositionMobilityModel> ();
+    s1->SetPosition (Vector ( 50.0, 50.0, 0  ));
     
     Ptr<ConstantPositionMobilityModel> p1 = pgwcontainer.Get (0)->GetObject<ConstantPositionMobilityModel> ();
     p1->SetPosition (Vector ( 90.0, 50.0, 0  ));
@@ -321,6 +366,18 @@ std::string transportProtocol = "ns3::TcpSocketFactory";
     n5->SetPosition (Vector ( 100.0, 60.0, 0  ));
     n6->SetPosition (Vector ( 100.0, 70.0, 0  ));
     n7->SetPosition (Vector ( 100.0, 80.0, 0  ));
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    ////////////////////////////////////////// NETWORK /////////////////////////////////////////////////////////////
 
     // connect a remoteHost to pgw. Setup routing too
     PointToPointHelper p2ph;
@@ -336,10 +393,10 @@ std::string transportProtocol = "ns3::TcpSocketFactory";
     NetDeviceContainer internetDevices7 = p2ph.Install(pgw, remoteHost7);
 
     // PointtoPoint connection pgw --->sgw
-    PointToPointHelper p2p;
-    p2p.SetDeviceAttribute("DataRate", DataRateValue(DataRate(dataRatebottleneckLink)));
-    p2p.SetDeviceAttribute("Mtu", UintegerValue(2500));
-    p2p.SetChannelAttribute("Delay", TimeValue(delayRemoteHostLink));
+    //PointToPointHelper p2p;
+    //p2p.SetDeviceAttribute("DataRate", DataRateValue(DataRate(dataRatebottleneckLink)));
+    //p2p.SetDeviceAttribute("Mtu", UintegerValue(2500));
+    //p2p.SetChannelAttribute("Delay", TimeValue(delayRemoteHostLink));
     //NetDeviceContainer gatewayNetdevices=p2p.Install(sgw,pgw);
     //NetDeviceContainer gatewayNetdevices2=p2p.Install(sgw,gnbptr);
     
@@ -424,6 +481,18 @@ std::string transportProtocol = "ns3::TcpSocketFactory";
 
 
 
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////// TRAFFIC /////////////////////////////////////////////////////
+
+
+
     //Add traffic
 
     uint16_t port = 9;
@@ -436,6 +505,10 @@ std::string transportProtocol = "ns3::TcpSocketFactory";
     sinkApps.Start (tcpAppStartTime);
     sinkApps.Stop (simTime);
     
+    
+    //__________________________________________ 1. FTP _________________________________________________
+    
+    
     TrafficGeneratorHelper ftpHelper(transportProtocol,
                                              Address(),
                                              TrafficGeneratorNgmnFtpMulti::GetTypeId());
@@ -445,16 +518,21 @@ std::string transportProtocol = "ns3::TcpSocketFactory";
     sourceApps.Add(ftpHelper.Install(remoteHost1));
     PacketSinkHelper packetSinkHelper10(transportProtocol,InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(0), 20) );
     sinkApps.Add(packetSinkHelper10.Install(ueTrafficNodeContainer.Get(0)));
-    /*
-    OnOffHelper onOffHelper1("ns3::UdpSocketFactory", InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(0), port));
-    onOffHelper1.SetAttribute("OnTime", StringValue("ns3::ConstantRandomVariable[Constant=1000]"));
-    onOffHelper1.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0]"));
-    onOffHelper1.SetAttribute ("DataRate",StringValue ("1Kbps"));
-    onOffHelper1.SetAttribute ("PacketSize",UintegerValue(20)); 
-    sourceApps.Add(onOffHelper1.Install(remoteHost1)); 
-    PacketSinkHelper sink1 ("ns3::UdpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), port));
-    sinkApps.Add(sink1.Install (ueTrafficNodeContainer.Get(0))); */
     
+    
+    
+    //_________________________________________ 2. UDP OnOff ____________________________________________
+    
+    OnOffHelper onOffHelper1("ns3::UdpSocketFactory", InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(1), port));
+    onOffHelper1.SetAttribute("OnTime", StringValue("ns3::ConstantRandomVariable[Constant=10]"));
+    onOffHelper1.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0]"));
+    onOffHelper1.SetAttribute ("DataRate",StringValue (udpDataRate));
+    onOffHelper1.SetAttribute ("PacketSize",UintegerValue(20)); 
+    sourceApps.Add(onOffHelper1.Install(remoteHost2)); 
+    PacketSinkHelper sink1 ("ns3::UdpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), port));
+    sinkApps.Add(sink1.Install (ueTrafficNodeContainer.Get(1))); 
+    
+    /*
     uint32_t MaxPacketSize = 1024;
     Time interPacketInterval = Seconds (0.05);
     uint32_t maxPacketCount = 320;
@@ -466,7 +544,10 @@ std::string transportProtocol = "ns3::TcpSocketFactory";
     udpclient2.SetAttribute ("PacketSize", UintegerValue (MaxPacketSize));
     sourceApps.Add(udpclient2.Install (remoteHost2));
     UdpServerHelper sink2(port);
-    sinkApps.Add(sink2.Install (ueTrafficNodeContainer.Get(1)));
+    sinkApps.Add(sink2.Install (ueTrafficNodeContainer.Get(1)));*/
+
+
+    //____________________________________ 3. TCP BULK ______________________________________________________
 
 
     BulkSendHelper source3 ("ns3::TcpSocketFactory", InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(2), port));
@@ -477,24 +558,11 @@ std::string transportProtocol = "ns3::TcpSocketFactory";
     PacketSinkHelper sink3 ("ns3::TcpSocketFactory", InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(2), port));
     sinkApps.Add(sink3.Install (ueTrafficNodeContainer.Get(2)));
   	
-  	//http, voip, gaming, video, ftpmultiple,
-   /* BulkSendHelper source4 ("ns3::TcpSocketFactory", InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(3), port));
-  	// Set the amount of data to send in bytes.  Zero is unlimited.
-    source4.SetAttribute ("MaxBytes", UintegerValue (maxBytes));
-    sourceApps.Add(source4.Install (remoteHost4));
-    PacketSinkHelper sink4 ("ns3::TcpSocketFactory", InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(3), port));
-    sinkApps.Add(sink4.Install (ueTrafficNodeContainer.Get(3))); 
-    
-    OnOffHelper onOffHelper5("ns3::UdpSocketFactory", InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(4), port));
-    onOffHelper5.SetAttribute("OnTime", StringValue("ns3::ConstantRandomVariable[Constant=1000]"));
-    onOffHelper5.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0]"));
-    onOffHelper5.SetAttribute ("DataRate",StringValue ("1Kbps"));
-    onOffHelper5.SetAttribute ("PacketSize",UintegerValue(20)); 
-    sourceApps.Add(onOffHelper5.Install(remoteHost5)); 
-    PacketSinkHelper sink5 ("ns3::UdpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), port));
-    sinkApps.Add(sink5.Install (ueTrafficNodeContainer.Get(4)));*/
-
-    //uint32_t portRemoteHost = 49153;
+  	
+  	
+  
+   //_____________________________________ 4. HTTP _____________________________________________________________
+  	
     ThreeGppHttpServerHelper httpServer4(InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(3), port));
     sourceApps.Add(httpServer4.Install(remoteHost4));
     Ptr<ThreeGppHttpServer> httpServer = sourceApps.Get(3)->GetObject<ThreeGppHttpServer>();
@@ -508,15 +576,9 @@ std::string transportProtocol = "ns3::TcpSocketFactory";
     sinkApps.Add(httpClient4.Install(ueTrafficNodeContainer.Get(3)));
     
     
-    /*ThreeGppHttpClientHelper httpClient4(InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(3), port));
-    sourceApps.Add(httpClient4.Install(remoteHost4));
     
-    ThreeGppHttpServerHelper httpServer4(InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(3), port));
-    sinkApps.Add(httpServer4.Install(ueTrafficNodeContainer.Get(3)));*/
-    //ThreeGppHttpClientHelper httpClient4(Ipv4Address("11.0.0.9"));
-    //sinkApps.Add(httpClient4.Install(ueTrafficNodeContainer.Get(3)));
 
-
+    //______________________________________ 5. VoIP _________________________________________________________
 
     
     TrafficGeneratorHelper trafficGeneratorHelper("ns3::UdpSocketFactory",
@@ -527,11 +589,14 @@ std::string transportProtocol = "ns3::TcpSocketFactory";
     trafficGeneratorHelper.SetAttribute("VoiceActivityFactor", DoubleValue(0.5));
     trafficGeneratorHelper.SetAttribute("VoicePayload", UintegerValue(40));
     trafficGeneratorHelper.SetAttribute("SIDPeriodicity", UintegerValue(160));
-    trafficGeneratorHelper.SetAttribute("SIDPayload", UintegerValue(15));
-    trafficGeneratorHelper.SetAttribute("Remote",AddressValue(InetSocketAddress(ueTrafficIpIfaceContainer.GetAddress(4),port)));
+    trafficGeneratorHelper.SetAttribute("SIDPayload", UintegerValue(15));    trafficGeneratorHelper.SetAttribute("Remote",AddressValue(InetSocketAddress(ueTrafficIpIfaceContainer.GetAddress(4),port)));
     sourceApps.Add(trafficGeneratorHelper.Install(remoteHost5));
     PacketSinkHelper packetSinkHelper5(transportProtocol,InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(4), port) );
     sinkApps.Add(packetSinkHelper5.Install(ueTrafficNodeContainer.Get(4)));
+
+
+
+    //______________________________________ 6. Gaming ___________________________________________________________
 
 
     TrafficGeneratorHelper trafficGeneratorHelper1(transportProtocol,
@@ -550,6 +615,10 @@ std::string transportProtocol = "ns3::TcpSocketFactory";
     sinkApps.Add(packetSinkHelper6.Install(ueTrafficNodeContainer.Get(5)));
 
 
+
+
+    //____________________________________________ 7. Video ____________________________________________________
+    
     TrafficGeneratorHelper trafficGeneratorHelper2(transportProtocol,
                                                           Address(),
                                                           TrafficGeneratorNgmnVideo::GetTypeId());
@@ -561,35 +630,6 @@ std::string transportProtocol = "ns3::TcpSocketFactory";
     PacketSinkHelper packetSinkHelper7(transportProtocol,InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(6), port) );
     sinkApps.Add(packetSinkHelper7.Install(ueTrafficNodeContainer.Get(6)));
 
-
-/*
-///Put this in place of onoff
-    TrafficGeneratorHelper ftpHelper(transportProtocol,
-                                             Address(),
-                                             TrafficGeneratorNgmnFtpMulti::GetTypeId());
-    ftpHelper.SetAttribute("PacketSize", UintegerValue(1448));
-    ftpHelper.SetAttribute("MaxFileSize", UintegerValue(5e6));
-    ftpHelper.SetAttribute("Remote",AddressValue(InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(0), port)));
-    sourceApps.Add(ftpHelper.Install(remoteHost1));
-    PacketSinkHelper packetSinkHelper10(transportProtocol,InetSocketAddress (ueTrafficIpIfaceContainer.GetAddress(0), port) );
-    sinkApps.Add(packetSinkHelper10.Install(ueTrafficNodeContainer.Get(0)));
-
-
-  	*/
-  	
-  	
-  	
-
-	// The sink will always listen to the specified ports
-	
-	
-	//PacketSinkHelper sink2 ("ns3::TcpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), port));
-	
-	
-	
-	
-	
-	
 	
 	  
 	  
@@ -605,12 +645,18 @@ std::string transportProtocol = "ns3::TcpSocketFactory";
     EpsBearer gamingBearer(EpsBearer::GBR_GAMING);
     EpsBearer voiceBearer(EpsBearer::GBR_CONV_VOICE);
     EpsBearer videoBearer(EpsBearer::GBR_CONV_VIDEO);
-    //EpsBearer gamingBearer(EpsBearer::GBR_GAMING);
-    //EpsBearer gamingBearer(EpsBearer::GBR_GAMING);
     
     nrHelper->ActivateDedicatedEpsBearer(ueTrafficNetDevContainer.Get(5), gamingBearer, filterTft);
     nrHelper->ActivateDedicatedEpsBearer(ueTrafficNetDevContainer.Get(4), voiceBearer, filterTft);
     nrHelper->ActivateDedicatedEpsBearer(ueTrafficNetDevContainer.Get(6), videoBearer, filterTft);
+
+
+
+
+
+
+
+//////////////////////////////////////////////////// TRACING FLOW //////////////////////////////////////////////
 
 
     nrHelper->EnableTraces();
